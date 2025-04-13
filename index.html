@@ -180,6 +180,9 @@
 
 
         @media (max-width: 600px) {
+            #drawingCanvas {
+                margin-top: 60px; /* Add top margin on small screens */
+            }
             .controls {
                 flex-direction: row; /* Keep controls in a row */
                 align-items: center;
@@ -240,9 +243,12 @@
                 display: flex;
             }
 
-            .controls > *:not(#controlsToggleButton) {
+            .controls > *:not(#controlsToggleButton, #clearCanvasButton, #toggleKanjiButton) {
                 display: none; /* Hide other controls */
             }
+             #clearCanvasButton, #toggleKanjiButton{
+                display: block;
+             }
         }
     </style>
 </head>
