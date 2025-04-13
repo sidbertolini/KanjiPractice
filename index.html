@@ -11,6 +11,7 @@
             align-items: center;
             height: 100vh;
             background-color: #f0f0f0;
+            overflow: hidden; /* Prevent body scrolling */
         }
 
         #drawingCanvas {
@@ -26,21 +27,22 @@
         }
 
         .controls {
-            position: static;
-            top: 0;
+            position: fixed; /* Fix the position of the controls bar */
+            bottom: 0; /* Anchor it to the bottom */
             left: 0;
             display: flex;
-            flex-direction: row;
+            flex-direction: row; /* Default to row for larger screens */
             justify-content: center;
             align-items: center;
             gap: 10px;
             padding: 10px;
             background-color: rgba(255,255,255,0.7);
-            border-radius: 8px;
+            border-radius: 8px 8px 0 0; /* Rounded corners at the top */
             box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
             width: 100%;
             box-sizing: border-box;
-            margin-bottom: 20px;
+            margin-bottom: 0; /* Remove bottom margin */
+            overflow: hidden; /* Hide overflowing content */
         }
 
         .control-group {
@@ -48,6 +50,7 @@
             flex-direction: column;
             margin-bottom: 0;
             margin-right: 10px;
+            flex-shrink: 0; /* Prevent shrinking */
         }
 
         .control-group label {
@@ -114,6 +117,7 @@
             font-size: 1em;
             transition: background-color 0.3s ease;
             margin-top: 0;
+            flex-shrink: 0; /* Prevent shrinking */
         }
 
         #clearCanvasButton:hover {
@@ -128,6 +132,7 @@
             margin-top: 0;
             border: 1px solid #ddd;
             border-radius: 5px;
+            flex-shrink: 0; /* Prevent shrinking */
         }
 
         #toggleKanjiButton {
@@ -140,21 +145,103 @@
             font-size: 1em;
             transition: background-color 0.3s ease;
             margin-top: 0;
+            flex-shrink: 0; /* Prevent shrinking */
         }
 
         #toggleKanjiButton:hover {
             background-color: #606060;
         }
 
+        .controls-popup {
+            position: absolute;
+            bottom: 40px; /* Position above the main controls bar */
+            left: 0;
+            right: 0;
+            background-color: rgba(255,255,255,0.9);
+            border-radius: 8px 8px 0 0;
+            box-shadow: 0px -2px 5px rgba(0,0,0,0.05);
+            padding: 10px;
+            display: none; /* Initially hidden */
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            z-index: 10;
+            max-height: 200px; /* Limit the height of the popup */
+            overflow-y: auto; /* Add scrollbar if needed */
+        }
+
+        .controls-popup.show {
+            display: flex; /* Show the popup when the class 'show' is added */
+        }
+
+        #controlsToggleButton {
+            display: none; /* Hide on larger screens */
+        }
+
+
         @media (max-width: 600px) {
             .controls {
-                flex-direction: column;
-                align-items: flex-start;
+                flex-direction: row; /* Keep controls in a row */
+                align-items: center;
+                justify-content: center;
                 padding: 10px;
+                border-radius: 0;
+                overflow: visible; /* Show overflow on small screens */
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                background-color: rgba(255,255,255,0.8);
             }
             .control-group {
+                margin-right: 10px;
+                margin-bottom: 0;
+            }
+            .control-group label {
+                margin-bottom: 3px;
+            }
+
+            #controlsToggleButton {
+                display: block; /* Show the button on small screens */
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                padding: 10px 15px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 1em;
                 margin-right: 0;
-                margin-bottom: 10px;
+                margin-bottom: 0;
+                flex-shrink: 0;
+            }
+
+            #controlsToggleButton:hover {
+                background-color: #45a049;
+            }
+
+            .controls-popup {
+                position: fixed; /* Use fixed positioning */
+                bottom: 40px;  /* 40px above the bottom bar */
+                left: 0;
+                right: 0;
+                flex-direction: column;
+                align-items: center;
+                max-height: 200px;
+                overflow-y: auto;
+                background-color: rgba(255,255,255,0.95);
+                border-radius: 8px 8px 0 0;
+                box-shadow: 0px -2px 5px rgba(0,0,0,0.2);
+                padding: 10px;
+                display: none;
+                z-index: 100;
+            }
+
+            .controls-popup.show {
+                display: flex;
+            }
+
+            .controls > *:not(#controlsToggleButton) {
+                display: none; /* Hide other controls */
             }
         }
     </style>
@@ -175,7 +262,25 @@
         </div>
         <button id="clearCanvasButton">Clear Canvas</button>
         <button id="toggleKanjiButton">Hide Kanji</button>
+        <button id="controlsToggleButton">Controls</button> </div>
+
+    <div class="controls-popup">
+        <div class="control-group">
+            <label for="colorPicker">Color:</label>
+            <input type="color" id="colorPickerPopup" value="#000000">
+        </div>
+        <div class="control-group">
+            <label for="lineWidthSlider">Line Width:</label>
+            <input type="range" id="lineWidthSliderPopup" min="1" max="50" value="2">
+        </div>
+        <div class="control-group">
+            <label for="kanjiInput">Kanji:</label>
+            <input type="text" id="kanjiInputPopup" maxlength="1" value="字">
+        </div>
+        <button id="clearCanvasButtonPopup">Clear Canvas</button>
+        <button id="toggleKanjiButtonPopup">Hide Kanji</button>
     </div>
+
     <canvas id="drawingCanvas" ></canvas>
 
     <script>
@@ -198,6 +303,16 @@
         const clearCanvasButton = document.getElementById('clearCanvasButton');
         const kanjiInput = document.getElementById('kanjiInput');
         const toggleKanjiButton = document.getElementById('toggleKanjiButton');
+        const controlsToggleButton = document.getElementById('controlsToggleButton'); // Get the new button
+        const controlsPopup = document.querySelector('.controls-popup'); // Get the popup
+
+        // Get the elements in the popup
+        const colorPickerPopup = document.getElementById('colorPickerPopup');
+        const lineWidthSliderPopup = document.getElementById('lineWidthSliderPopup');
+        const clearCanvasButtonPopup = document.getElementById('clearCanvasButtonPopup');
+        const kanjiInputPopup = document.getElementById('kanjiInputPopup');
+        const toggleKanjiButtonPopup = document.getElementById('toggleKanjiButtonPopup');
+
 
         function resizeCanvas() {
             const containerWidth = window.innerWidth;
@@ -316,7 +431,7 @@
                 const centerX = canvas.width / 2;
                 const centerY = canvas.height / 2;
                 ctx.fillStyle = kanjiColor;
-                const fontSize = Math.min(canvas.width, canvas.height) * 0.8;
+                const fontSize = Math.min(canvas.width, canvas.height) * 0.4;
                 ctx.font = `${fontSize}px serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
@@ -363,18 +478,14 @@
         colorPicker.addEventListener('change', (event) => {
             selectedColor = event.target.value;
         });
-
         lineWidthSlider.addEventListener('input', (event) => {
             lineWidth = event.target.value;
         });
-
         clearCanvasButton.addEventListener('click', clearCanvas);
-
         kanjiInput.addEventListener('input', (event) => {
             kanji = event.target.value;
             redrawCanvas();
         });
-
         toggleKanjiButton.addEventListener('click', () => {
             showKanji = !showKanji;
             kanjiColor = showKanji ? 'rgba(0,0,0,0.1)' : '#fff';
@@ -387,6 +498,43 @@
 
         drawGrid();
         redrawCanvas();
+
+        // New event listener for the controls toggle button
+        controlsToggleButton.addEventListener('click', () => {
+            controlsPopup.classList.toggle('show'); // Toggle the 'show' class
+        });
+
+        // Event listeners for the popup controls.  We use the *Popup elements.
+        colorPickerPopup.addEventListener('change', (event) => {
+            selectedColor = event.target.value;
+            colorPicker.value = event.target.value; // Keep both in sync
+        });
+
+        lineWidthSliderPopup.addEventListener('input', (event) => {
+            lineWidth = event.target.value;
+            lineWidthSlider.value = event.target.value;
+        });
+
+        clearCanvasButtonPopup.addEventListener('click', () => {
+            clearCanvas();
+            controlsPopup.classList.remove('show'); // Hide popup after action
+        });
+
+        kanjiInputPopup.addEventListener('input', (event) => {
+            kanji = event.target.value;
+            kanjiInput.value = event.target.value;
+            redrawCanvas();
+        });
+
+        toggleKanjiButtonPopup.addEventListener('click', () => {
+            showKanji = !showKanji;
+            kanjiColor = showKanji ? 'rgba(0,0,0,0.1)' : '#fff';
+            toggleKanjiButton.textContent = showKanji ? 'Hide Kanji' : 'Show Kanji'; //keep button text in sync
+            toggleKanjiButtonPopup.textContent = showKanji ? 'Hide Kanji' : 'Show Kanji';
+            redrawCanvas();
+            controlsPopup.classList.remove('show');
+        });
+
     </script>
 </body>
 </html>
