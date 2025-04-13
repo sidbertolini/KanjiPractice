@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Drawing Canvas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        #drawingCanvas {
+            border: 2px solid #333;
+            cursor: crosshair;
+            background-color: #fff;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            display: block;
+            max-width: 80%;
+            max-height: 80%;
+            margin-top: 20px;
+        }
+
+        .controls {
+            position: static;
+            top: 0;
+            left: 0;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background-color: rgba(255,255,255,0.7);
+            border-radius: 8px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 0;
+            margin-right: 10px;
+        }
+
+        .control-group label {
+            margin-bottom: 3px;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .control-group input[type="color"],
+        .control-group input[type="range"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 100px;
+            height: 30px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 0;
+            cursor: pointer;
+        }
+
+        .control-group input[type="color"] {
+            height: 36px;
+            padding: 3px;
+        }
+
+        .control-group input[type="range"] {
+            background: #f0f0f0;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background-color: #4CAF50;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .control-group input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background-color: #4CAF50;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: none;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb:hover,
+        .control-group input[type="range"]::-moz-range-thumb:hover {
+            background-color: #45a049;
+        }
+
+        #clearCanvasButton {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+            margin-top: 0;
+        }
+
+        #clearCanvasButton:hover {
+            background-color: #d32f2f;
+        }
+
+        #kanjiInput {
+            width: 50px;
+            height: 30px;
+            font-size: 1.5em;
+            text-align: center;
+            margin-top: 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        #toggleKanjiButton {
+            background-color: #808080;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+            margin-top: 0;
+        }
+
+        #toggleKanjiButton:hover {
+            background-color: #606060;
+        }
+
+        @media (max-width: 600px) {
+            .controls {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 10px;
+            }
+            .control-group {
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="control-group">
+            <label for="colorPicker">Color:</label>
+            <input type="color" id="colorPicker" value="#000000">
+        </div>
+        <div class="control-group">
+            <label for="lineWidthSlider">Line Width:</label>
+            <input type="range" id="lineWidthSlider" min="1" max="50" value="2">
+        </div>
+        <div class="control-group">
+            <label for="kanjiInput">Kanji:</label>
+            <input type="text" id="kanjiInput" maxlength="1" value="字">
+        </div>
+        <button id="clearCanvasButton">Clear Canvas</button>
+        <button id="toggleKanjiButton">Hide Kanji</button>
+    </div>
+    <canvas id="drawingCanvas" ></canvas>
+
+    <script>
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let selectedColor = '#000000';
+        let lineWidth = 2;
+        let kanji = '字';
+        let showKanji = true;
+        let drawnPaths = [];
+        let mouseButtonDown = false;
+        let gridDrawn = false; //track if grid has been drawn
+        let kanjiColor = 'rgba(0,0,0,0.1)';
+
+        const colorPicker = document.getElementById('colorPicker');
+        const lineWidthSlider = document.getElementById('lineWidthSlider');
+        const clearCanvasButton = document.getElementById('clearCanvasButton');
+        const kanjiInput = document.getElementById('kanjiInput');
+        const toggleKanjiButton = document.getElementById('toggleKanjiButton');
+
+        function resizeCanvas() {
+            const containerWidth = window.innerWidth;
+            const containerHeight = window.innerHeight;
+
+            const size = Math.min(containerWidth, containerHeight) * 0.8;
+            canvas.width = size;
+            canvas.height = size;
+            if (!gridDrawn) {
+                drawGrid();
+                gridDrawn = true;
+            }
+            redrawCanvas();
+        }
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+
+        function startDrawing(e) {
+            if (e.type === 'mousedown') {
+                mouseButtonDown = true;
+            }
+            isDrawing = true;
+            [lastX, lastY] = getMousePosition(e);
+            ctx.beginPath();
+            // Store the starting point of the path.
+            drawnPaths.push({
+                points: [lastX, lastY],
+                strokeStyle: selectedColor,
+                lineWidth: lineWidth,
+                lineCap: 'round',
+                lineJoin: 'round'
+            });
+        }
+
+        function draw(e) {
+            if (!isDrawing || (e.type === 'mousemove' && !mouseButtonDown)) return;
+
+            const [x, y] = getMousePosition(e);
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.strokeStyle = selectedColor;
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+
+            [lastX, lastY] = [x, y];
+
+            // Add the current point to the last path's points array.
+            if (drawnPaths.length > 0) {
+                drawnPaths[drawnPaths.length - 1].points.push(x, y);
+            }
+        }
+
+        function stopDrawing(e) {
+            if (e.type === 'mouseup') {
+                mouseButtonDown = false;
+            }
+            if (isDrawing) {
+                ctx.stroke();
+            }
+            isDrawing = false;
+            ctx.beginPath();
+        }
+
+        function getMousePosition(e) {
+            const rect = canvas.getBoundingClientRect();
+            if (e.touches) {
+                return [
+                    e.touches[0].clientX - rect.left,
+                    e.touches[0].clientY - rect.top
+                ];
+            } else {
+                return [
+                    e.clientX - rect.left,
+                    e.clientY - rect.top
+                ];
+            }
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawnPaths = [];
+            gridDrawn = false; //reset grid state
+            drawGrid();
+            redrawCanvas();
+        }
+
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+
+            // Redraw saved paths
+            drawnPaths.forEach(pathData => {
+                ctx.strokeStyle = pathData.strokeStyle;
+                ctx.lineWidth = pathData.lineWidth;
+                ctx.lineCap = pathData.lineCap;
+                ctx.lineJoin = pathData.lineJoin;
+                const points = pathData.points;
+                if (points && points.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(points[0], points[1]);
+                    for (let i = 2; i < points.length; i += 2) {
+                        const x = points[i];
+                        const y = points[i + 1];
+                        ctx.lineTo(x, y);
+                    }
+                    ctx.stroke();
+                }
+            });
+
+            // Draw Kanji
+            if (showKanji) {
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                ctx.fillStyle = kanjiColor;
+                const fontSize = Math.min(canvas.width, canvas.height) * 0.8;
+                ctx.font = `${fontSize}px serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(kanji, centerX, centerY);
+            }
+        }
+
+        function drawGrid() {
+            const gridSize = 50;
+            const numRows = Math.floor(canvas.height / gridSize);
+            const numCols = Math.floor(canvas.width / gridSize);
+            const gridColor = 'rgba(0,0,0,0.2)';
+
+            ctx.strokeStyle = gridColor;
+            ctx.lineWidth = 1;
+
+            for (let i = 0; i <= numRows; i++) {
+                const y = i * gridSize;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            for (let j = 0; j <= numCols; j++) {
+                const x = j * gridSize;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            gridDrawn = true;
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+        canvas.addEventListener('mousemove', draw);
+
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('touchcancel', stopDrawing);
+
+        colorPicker.addEventListener('change', (event) => {
+            selectedColor = event.target.value;
+        });
+
+        lineWidthSlider.addEventListener('input', (event) => {
+            lineWidth = event.target.value;
+        });
+
+        clearCanvasButton.addEventListener('click', clearCanvas);
+
+        kanjiInput.addEventListener('input', (event) => {
+            kanji = event.target.value;
+            redrawCanvas();
+        });
+
+        toggleKanjiButton.addEventListener('click', () => {
+            showKanji = !showKanji;
+            kanjiColor = showKanji ? 'rgba(0,0,0,0.1)' : '#fff';
+            redrawCanvas();
+        });
+
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+
+        drawGrid();
+        redrawCanvas();
+    </script>
+</body>
+</html>
